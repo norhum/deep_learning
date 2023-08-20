@@ -1,0 +1,175 @@
+#unfinished
+
+# tictactoe with me trying to implement reinforcement learning without having any knowledge of RL at all
+import torch
+import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+
+torch.manual_seed(1)
+
+#for GPU support
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+#hyperparameters and more
+lr = 3e-4
+num_epochs = 100000
+iter = 1000
+loss_bin = []
+loss_interval = 1000
+
+class Tictactoe:
+  def __init__(self):
+    self.grid = np.zeros((3,3), dtype=np.int8) #3x3 grid will be implemented as a tensor in the shape of (3,3)
+    self.turn = 1
+    self.current = False
+    self.player = 'A'
+    self.grid_list = []
+    self.player_list = []
+
+  def round(self, input): #input is going to be 0 through 8
+    x, y = input//3, input%3
+
+    if self.grid[x, y] != 0:
+      print('invalid placement')
+      return None
+    else:
+      self.grid[x, y] = self.turn
+
+    self.grid_list.append(self.grid.tolist())
+    self.player_list.append(self.player)
+    self.turn *= -1
+
+  def decision(self): #to decide whether it's over or not, returns boolean value or None if it's a draw (for the 1st option)
+    if 0 not in self.grid:
+      # print(f'Congrats Player {self.player}!')
+      self.current = True
+      return
+
+    if 3 in [*np.abs(self.grid.sum(0)).tolist(), *np.abs(self.grid.sum(1)).tolist()]:
+      # print(f'Congrats Player {self.player}!')
+      self.current = True
+    elif np.abs(self.grid.trace()) == 3:
+      # print(f'Congrats Player {self.player}!')
+      self.current = True
+    elif np.abs(self.grid[0,2] + self.grid[1,1] + self.grid[2,0]) == 3:
+      # print(f'Congrats Player {self.player}!')
+      self.current = True
+    else:
+      self.current = False
+
+  def __call__(self, game):
+    i = 0
+    while True:
+      # user_input = int(input(f"Player {self.player}'s turn "))
+      user_input = game[i]
+      i += 1
+      self.round(user_input)
+      self.decision()
+      if self.current == True:
+        return self.player
+      self.player = 'A' if self.turn == 1 else 'B'
+
+#making data input is the grid, output is a boolean value of the final result
+class DataMaker:
+  def __init__(self, iter=1):
+    self.iter = iter
+    self.data = []
+    self.value = []
+
+  def game_generator(self):
+    return np.random.choice(9, 9, replace=False)
+
+  def __call__(self):
+    for _ in range(self.iter):
+      game = Tictactoe()
+      play = self.game_generator()
+      player = game(play)
+
+      # for building data
+      self.data.append(game.grid_list)
+      self.value.append([1 if game.player_list[i] == game.player else 0 for i in range(len(game.grid_list))])
+
+    self.data = torch.tensor([item for sublist in self.data for item in sublist], dtype=torch.float).view(-1, 9).to(device)
+    self.value = torch.tensor([item for sublist in self.value for item in sublist], dtype=torch.float).view(-1, 1).to(device)
+    return self.data, self.value 
+
+b = DataMaker(iter)
+b.data, b.value = b()
+
+print(b.data.shape, b.value.shape)
+
+#Tttpredictor predicts how likely you will win the game 
+#outputs the winning accuracy for the player who played the last move of the input grid
+class Tttpredictor(nn.Module):
+  def __init__(self):
+    super().__init__()
+    self.seq = nn.Sequential(
+        nn.Linear(9, 64),
+        nn.ReLU(),
+        nn.Linear(64, 16),
+        nn.ReLU(),
+        nn.Linear(16, 4),
+        nn.ReLU(),
+        nn.Linear(4, 1),
+        nn.Sigmoid(), 
+    )
+
+  def forward(self, x):
+    output = self.seq(x)
+    return output
+
+# input is the grid, output is 0 or 1 
+class Tttcomputer:
+  pass
+
+model = Tttpredictor().to(device)
+
+#loss and optimizer
+criterion = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+#train
+for i in range(num_epochs):
+  #forward
+  prediction = model(b.data)
+  loss = criterion(prediction, b.value)
+
+  #backward and optimize
+  optimizer.zero_grad()
+  loss.backward()
+  optimizer.step()
+
+  #print the loss
+  if i % loss_interval == 0:
+    loss_bin.append(loss.item())
+    print(f'{i//loss_interval}: {loss.item():.4f}')
+
+#draw the loss
+plt.plot(loss_bin)
+plt.show()
+
+a = model(torch.tensor([1.,-1.,0.,1.,1.,-1.,1.,0.,0.]).to(device))
+# how to see the model? -> winning accuracy of the player who played the last move in the input grid
+# it doesn't work that well. I think it's because the data is just a random list of integers so there is no thinking in the game
+a.item()
+
+#stuff to improve on
+#1. decision function is too messy
+#2. datamaker class can be optimized
+
+# what to do when it's a draw (1st option: end it as a draw(hard to inplement in reinforcement learning), (returns None when the game is a draw)
+# 2nd option: end it as B losing(it would be B's turn and the model could hack the game by just keep on drawing))
+# -> trying the 2nd option 
+
+# or when you place in the same place (1st option: just end the game with the player losing, 2nd option: retry) -> tring the 2nd option
+# the 2nd option may end as an infinite loop when playing with the reinforcement learning model since it just keeps retrying so probably should add count and add it to loss function
+
+#stuff I've learned while making this model
+#1. sometimes I build stuff that I don't even understand and it works so I have to go back and find out what it does lol
+#2. the deeper the models gets, the more I forget what I wanted to implement or what certain functions do so always write down comments
+#3. it is way better to first plan out what functions do what task with what i/o than just brute making stuff because you'll realize at some point what you're building is wrong
+#(the Tttpredictor class was an accident. I was only trying to build the Tttcomputer)
+#4. surprizingly enough, there are no fluctuation in the loss graph. I assume it's because the loss_interval is high plus the Adam optimizer. 
+#Or maybe it's just a RL thing. I should learn more about it.
+#5. 
