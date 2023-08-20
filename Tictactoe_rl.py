@@ -1,6 +1,6 @@
 #unfinished but I want to end it here since things left to do are minor bugs that are unrelated to RL
 
-# tictactoe with me trying to implement reinforcement learning without having any knowledge of RL at all
+#tictactoe with me trying to implement reinforcement learning without having any knowledge of RL at all
 import torch
 import torch.nn as nn
 import numpy as np
@@ -105,7 +105,6 @@ b.data, b.value = b()
 
 print(b.data.shape, b.value.shape)
 
-#now implement a model that plays tictactoe!
 #Tttprediction predicts how likely you will win the game
 #outputs the winning accuracy for the player who played the last move of the input grid
 class Tttprediction(nn.Module):
@@ -125,7 +124,8 @@ class Tttprediction(nn.Module):
   def forward(self, x):
     output = self.seq(x)
     return output
-
+    
+#now implement a model that plays tictactoe! (Surprisingly short haha...)
 #input is the grid, output is a one hot vector from 0 to 8
 class Tttcomputer(nn.Module):
   def __init__(self):
@@ -144,7 +144,6 @@ class Tttcomputer(nn.Module):
     return output
 
 #for Tttprediction
-
 model1 = Tttprediction().to(device)
 
 #loss and optimizer
@@ -220,7 +219,7 @@ torch.multinomial(probs, 1)
 #  0 1 -1
 #  0 1 0
 
-# play with the computer now
+# play with the computer
 class Play:
   def __init__(self):
     self.grid = np.zeros((3,3), dtype=np.int8) #3x3 grid will be implemented as a tensor in the shape of (3,3)
@@ -305,24 +304,23 @@ game = Play()
 game()
 
 #stuff to improve on
-#1. decision function is too messy
-#2. datamaker class can be optimized
-# 3.what to do when it's a draw (1st option: end it as a draw(hard to inplement in reinforcement learning), (returns None when the game is a draw)
+#1. Decision function is too messy
+#2. Datamaker class can be optimized
+#3. What to do when it's a draw (1st option: end it as a draw(hard to inplement in reinforcement learning), (returns None when the game is a draw)
 # 2nd option: end it as B losing(it would be B's turn and the model could hack the game by just keep on drawing))
 # -> trying the 2nd option
-# 4.or when you play in the same place (1st option: just end the game with the player losing, 2nd option: retry) -> tring the 2nd option
+#4. What to do when you play in the same place (1st option: just end the game with the player losing, 2nd option: retry) -> tring the 2nd option
 # the 2nd option may end as an infinite loop when playing with the reinforcement learning model since it just keeps retrying so probably should add count and add it to loss function
-# 5.a nearly infinite loop occurs when the computer spits out the same play
+#5. A nearly infinite loop occurs when the computer spits out the same play
 
 #takeaways
-#1. sometimes I build stuff that I don't even understand and it works so I have to go back and find out what it does lol
-#2. the deeper the models gets, the more I forget what I wanted to implement or what certain functions do so always write down comments
-#3. it is way better to first plan out what functions do what task with what i/o than just brute making stuff because you'll realize at some point what you're building is wrong
+#1. Sometimes I build stuff that I don't even understand and it works so I have to go back and find out what it does lol
+#2. The deeper the models gets, the more I forget what I wanted to implement or what certain functions do so always write down comments
+#3. It is way better to first plan out what functions do what task with what i/o than just brute making stuff because you'll realize at some point what you're building is wrong
 #(the Tttprediction class was an accident. I was only trying to build the Tttcomputer)
-#4. surprizingly enough, there are no fluctuation in the loss graph. I assume it's because the loss_interval is high plus the Adam optimizer.
+#4. Surprizingly enough, there are no fluctuation in the loss graph. I assume it's because the loss_interval is high plus the Adam optimizer.
 #Or maybe it's just a RL thing. I should learn more about it.
 #5. I wanted to add weights to games that take too many rounds (give higher weight to those rounds that ended earlier)
 #It was such a mess. I basically had to dissect the crossentropyloss to multiply the weights. Also, nested for loops is never a good idea...
-#6 so the most important thing I've learned here is that the RL model I've made is very limited to certain models and is not applicable to other models
-
-#Better learn RL now
+#6. So the most important thing I've learned here is that the RL model I've made is very limited to certain models and is not applicable to other models
+#therefore I need to learn a more general RL model
