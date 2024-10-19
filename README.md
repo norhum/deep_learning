@@ -1,2 +1,2 @@
 # deep_learning
-just uploading stuff I've learn in deep learning using mostly pytorch 
+just uploading stuff I've learned about deep learning using mostly pytorch 
